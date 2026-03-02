@@ -325,25 +325,28 @@ $get_sortable_header = function( $column_key, $display_name ) use ( $sort_by, $s
                             </span>
                         </td>
                         <td><?php echo esc_html( date('d-M-Y H:i', strtotime($booking['created_at'])) ); ?></td>
-                        <td>
-                                                       
-                            <a href="<?php echo esc_url( $edit_url ); ?>" class="button button-primary button-small">Edit</a>
+                        <td>                              
 
                             <button
                                 class="button button-small delete-booking"
                                 data-booking-id="<?php echo $booking_id; ?>"
-                                data-delete-nonce="<?php echo wp_create_nonce( 'wp_rest' ); ?>"
-                                style="margin-left: 5px;"
+                                data-delete-nonce="<?php echo wp_create_nonce( 'wp_rest' );?>"                                
                             >Delete</button>
 
-                            <?php if (!empty($booking['order_id'])): ?>
-                                <!-- Show order link if already created -->
+                            <?php if (!empty($booking['order_id'])): ?>                                
+
                                 <a href="<?php echo admin_url('post.php?post=' . $booking['order_id'] . '&action=edit'); ?>" 
                                     class="button button-small" target="_blank">
                                     View Order #<?php echo $booking['order_id']; ?>
                                 </a>
+
                             <?php else: ?>
-                            <!-- Show send to WooCommerce button -->
+
+                                <a href="<?php echo esc_url( $edit_url ); ?>" 
+                                    class="edit-booking button button-primary button-small"
+                                    style="margin-left: 5px;"
+                                >Edit</a>
+
                                 <button class="button button-primary button-small send-to-woocommerce" 
                                     data-booking-id="<?php echo $booking['id']; ?>"
                                     data-nonce="<?php echo wp_create_nonce('send_booking_to_woocommerce'); ?>"
@@ -494,6 +497,8 @@ jQuery(document).ready(function($) {
         var button = $(this);
         var bookingId = button.data('booking-id');
         var spinner = button.siblings('.spinner');
+
+        button.siblings('.edit-booking').hide();
         
         // Disable button and show spinner
         button.prop('disabled', true);

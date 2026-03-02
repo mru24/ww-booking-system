@@ -49,11 +49,13 @@ if ( ! class_exists( 'WW_Booking_Admin' ) ) {
 
 			if (class_exists('WooCommerce')) {
 				require_once plugin_dir_path(__FILE__) . 'includes/class-ww-booking-woocommerce-handler.php';
-				$this->woo_handler = new WW_Booking_Woocommerce_Handler(
-					$this->db, 
-					$this->table_prefix, 
-					$this->bookings
-				);
+				$this->woocommerce_handler = new WW_Booking_Woocommerce_Handler(
+        $this->db, 
+        $this->table_prefix, 
+        $this->bookings,
+        $this->clubs,
+        $this->pegs
+    );
 			}
 
 			// Load Customer Functions
@@ -396,33 +398,31 @@ if ( ! class_exists( 'WW_Booking_Admin' ) ) {
         }
 
 		// --- New Booking Pages Renderer ---   <-- ADD FROM HERE
-        public function render_new_booking_page() {
-            // Fetch all necessary dropdown data upfront
-            $lakes = $this->lakes->get_lakes();
-            $match_types = $this->match_types->get_types();
-            $clubs = $this->clubs->get_clubs(); // Assuming this is defined
-            require_once plugin_dir_path( __FILE__ ) . 'views/booking-form.php';
-        }
+				public function render_new_booking_page() {
+					// Fetch all necessary dropdown data upfront
+					$lakes = $this->lakes->get_lakes();
+					$match_types = $this->match_types->get_types();
+					$clubs = $this->clubs->get_clubs(); // Assuming this is defined
+					require_once plugin_dir_path( __FILE__ ) . 'views/booking-form.php';
+				}
 
-        public function render_edit_booking_page() {
-            $booking_id = isset( $_GET['booking_id'] ) ? intval( $_GET['booking_id'] ) : 0;
-			$lakes = $this->lakes->get_lakes();
-            $match_types = $this->match_types->get_types();
-            $clubs = $this->clubs->get_clubs(); // Assuming this is defined
-    	    $booking_data = array();
-    	    $title = '';
+				public function render_edit_booking_page() {
+					$booking_id = isset( $_GET['booking_id'] ) ? intval( $_GET['booking_id'] ) : 0;
+					$lakes = $this->lakes->get_lakes();
+					$match_types = $this->match_types->get_types();
+					$clubs = $this->clubs->get_clubs();
+					$booking_data = array();
+					$title = '';
 
-    	    if ( $booking_id > 0 ) {
-    	        $booking_data = $this->bookings->get_booking_with_details( $booking_id );
-                // 2. If booking exists, get its lake info
-        		if ( $booking_data ) {
-            		$title = 'Edit Booking: ' . esc_html( $booking_data['id'] );
-
-		            if ( ! empty( $booking_data['lake_id'] ) ) {
-		                $lake_data = $this->lakes->get_lake( $booking_data['lake_id'] );
-		            }
-		        }
-    	    }
+					if ( $booking_id > 0 ) {
+						$booking_data = $this->bookings->get_booking_with_details( $booking_id );
+						if ( $booking_data ) {
+							$title = 'Edit Booking: ' . esc_html( $booking_data['id'] );
+							if ( ! empty( $booking_data['lake_id'] ) ) {
+								$lake_data = $this->lakes->get_lake( $booking_data['lake_id'] );
+							}
+						}
+					}
     	    require_once plugin_dir_path( __FILE__ ) . 'views/booking-edit-form.php';
         }
 
