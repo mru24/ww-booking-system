@@ -12,7 +12,7 @@ if ( ! class_exists( 'WW_Booking_Plugin' ) ) {
     class WW_Booking_Plugin {
         protected static $instance = null;
         protected $db;
-        protected $table_prefix = 'booking_';
+        protected $table_prefix = 'ww_booking_';
         protected $admin; // Holds the admin class instance
         protected $frontend; // Holds the frontend class instance
 
@@ -179,7 +179,7 @@ if ( ! class_exists( 'WW_Booking_Plugin' ) ) {
 				    created_at datetime NOT NULL,
 				    updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 				    PRIMARY KEY (id),
-				    UNIQUE KEY holiday_date (holiday_date)
+				    UNIQUE KEY id (id)
 				) $charset_collate;",
 				'holiday_lakes' => "CREATE TABLE " . $this->get_table_name( 'holiday_lakes' ) . " (
 				    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
