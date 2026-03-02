@@ -270,10 +270,10 @@ $get_sortable_header = function( $column_key, $display_name ) use ( $sort_by, $s
             <tr>
                 <th width="10%"><?php echo $get_sortable_header( 'lake_name', 'Lake' ); ?></th>
                 <th width="20%"><?php echo $get_sortable_header( 'date_start', 'Dates' ); ?></th>
-                <th width="30%">Pegs Booked</th>
+                <th width="15%">Pegs Booked</th>
                 <th width="10%"><?php echo $get_sortable_header( 'booking_status', 'Status' ); ?></th>
                 <th width="15%"><?php echo $get_sortable_header( 'created_at', 'Created' ); ?></th>
-                <th width="15%" class="text-right">Actions</th>
+                <th width="30%" class="text-right">Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -309,11 +309,10 @@ $get_sortable_header = function( $column_key, $display_name ) use ( $sort_by, $s
                                     <div style="margin-top: 5px;">
                                         <button type="button"
                                             class="button button-small view-pegs-details"
-        data-booking-id="<?php echo $booking_id; ?>"
-        data-pegs='<?php echo esc_attr( wp_json_encode( $booking['pegs'] ) ); ?>'>
-    View <?php echo count($booking['pegs']); ?> pegs
-</button>
-
+                                            data-booking-id="<?php echo $booking_id; ?>"
+                                            data-pegs='<?php echo esc_attr( wp_json_encode( $booking['pegs'] ) ); ?>'>
+                                                View <?php echo count($booking['pegs']); ?> pegs
+                                        </button>
                                     </div>
                                 <?php endif; ?>
                             <?php else : ?>
@@ -327,6 +326,7 @@ $get_sortable_header = function( $column_key, $display_name ) use ( $sort_by, $s
                         </td>
                         <td><?php echo esc_html( date('d-M-Y H:i', strtotime($booking['created_at'])) ); ?></td>
                         <td>
+                                                       
                             <a href="<?php echo esc_url( $edit_url ); ?>" class="button button-primary button-small">Edit</a>
 
                             <button
@@ -335,6 +335,24 @@ $get_sortable_header = function( $column_key, $display_name ) use ( $sort_by, $s
                                 data-delete-nonce="<?php echo wp_create_nonce( 'wp_rest' ); ?>"
                                 style="margin-left: 5px;"
                             >Delete</button>
+
+                            <?php if (!empty($booking['order_id'])): ?>
+                                <!-- Show order link if already created -->
+                                <a href="<?php echo admin_url('post.php?post=' . $booking['order_id'] . '&action=edit'); ?>" 
+                                    class="button button-small" target="_blank">
+                                    View Order #<?php echo $booking['order_id']; ?>
+                                </a>
+                            <?php else: ?>
+                            <!-- Show send to WooCommerce button -->
+                                <button class="button button-primary button-small send-to-woocommerce" 
+                                    data-booking-id="<?php echo $booking['id']; ?>"
+                                    data-nonce="<?php echo wp_create_nonce('send_booking_to_woocommerce'); ?>"
+                                    style="margin-left: 5px;"
+                                >
+                                    Send to WooCommerce
+                                </button>
+                                <span class="spinner" style="float:none;display:none;"></span>
+                            <?php endif; ?> 
                         </td>
                     </tr>
                 <?php endforeach; ?>
@@ -471,6 +489,60 @@ jQuery(document).ready(function($) {
         $('#pegs-list').html(html);
         $('#pegs-modal').show();
     });    
+
+    $('.send-to-woocommerce').on('click', function() {
+        var button = $(this);
+        var bookingId = button.data('booking-id');
+        var spinner = button.siblings('.spinner');
+        
+        // Disable button and show spinner
+        button.prop('disabled', true);
+        spinner.show();
+        
+        // Send AJAX request
+        $.ajax({
+            url: ajaxurl,
+            type: 'POST',
+            data: {
+                action: 'send_booking_to_woocommerce',
+                booking_id: bookingId,
+                nonce: button.data('nonce')
+            },
+            success: function(response) {
+                spinner.hide();
+                
+                if (response.success) {
+                    // Show success message
+                    button.replaceWith(
+                        '<a href="' + response.data.order_edit_url + '" class="button button-small" target="_blank">' +
+                        'View Order #' + response.data.order_id + 
+                        '</a>'
+                    );
+                    
+                    // Optional: Show success notice
+                    $(document.body).append(
+                        '<div class="notice notice-success is-dismissible" style="position:fixed;top:50px;right:20px;z-index:9999;">' +
+                        '<p>Order #' + response.data.order_id + ' created successfully!</p>' +
+                        '</div>'
+                    );
+                    
+                    // Auto dismiss after 3 seconds
+                    setTimeout(function() {
+                        $('.notice-success').fadeOut();
+                    }, 3000);
+                } else {
+                    // Show error
+                    alert('Error: ' + response.data.message);
+                    button.prop('disabled', false);
+                }
+            },
+            error: function() {
+                spinner.hide();
+                alert('AJAX error occurred');
+                button.prop('disabled', false);
+            }
+        });
+    });
 });
 
 // Function to update the bookings per page

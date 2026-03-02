@@ -6,36 +6,37 @@
 
 if ( ! class_exists( 'WW_Booking_Admin' ) ) {
 
-    class WW_Booking_Admin {
+	class WW_Booking_Admin {
 
-        protected static $instance = null;
-        protected $db;
-        protected $table_prefix;
+		protected static $instance = null;
+		protected $db;
+		protected $table_prefix;
 		protected $customers;
-    	protected $subscriptions;
+		protected $subscriptions;
 		protected $bookings;
-    	protected $clubs;
+		protected $clubs;
 		protected $lakes;
-    	protected $pegs;
+		protected $pegs;
 		protected $match_types;
 		private $active_modules = array();
 		protected $reports;
 		protected $logger;
 		protected $holidays;
+		protected $woocommerce_handler;
 
-        /**
-         * Singleton pattern with dependency injection for $wpdb.
-         */
-        public static function get_instance( $db, $table_prefix ) {
-            if ( is_null( self::$instance ) ) {
-                self::$instance = new self( $db, $table_prefix );
-            }
-            return self::$instance;
-        }
+		/**
+		 * Singleton pattern with dependency injection for $wpdb.
+		 */
+		public static function get_instance( $db, $table_prefix ) {
+			if ( is_null( self::$instance ) ) {
+				self::$instance = new self( $db, $table_prefix );
+			}
+			return self::$instance;
+		}
 
-        private function __construct( $db, $table_prefix ) {
-            $this->db = $db;
-            $this->table_prefix = $table_prefix;
+		private function __construct( $db, $table_prefix ) {
+			$this->db = $db;
+			$this->table_prefix = $table_prefix;
 
 			$this->load_active_modules();
 
@@ -44,12 +45,21 @@ if ( ! class_exists( 'WW_Booking_Admin' ) ) {
 
 			// Load Booking Functions
 			require_once plugin_dir_path( __FILE__ ) . 'includes/class-ww-booking-bookings.php';
-            $this->bookings = new WW_Booking_Bookings( $db, $table_prefix );
+			$this->bookings = new WW_Booking_Bookings( $db, $table_prefix );
 
-            // Load Customer Functions
-            if ( ! empty( $this->active_modules['customers'] ) ) {
-            	require_once plugin_dir_path( __FILE__ ) . 'includes/class-ww-booking-customers.php';
-            	$this->customers = new WW_Booking_Customers( $db, $table_prefix );
+			if (class_exists('WooCommerce')) {
+				require_once plugin_dir_path(__FILE__) . 'includes/class-ww-booking-woocommerce-handler.php';
+				$this->woo_handler = new WW_Booking_Woocommerce_Handler(
+					$this->db, 
+					$this->table_prefix, 
+					$this->bookings
+				);
+			}
+
+			// Load Customer Functions
+			if ( ! empty( $this->active_modules['customers'] ) ) {
+				require_once plugin_dir_path( __FILE__ ) . 'includes/class-ww-booking-customers.php';
+				$this->customers = new WW_Booking_Customers( $db, $table_prefix );
 			}
 
 			// Load Subscription Functions
@@ -95,12 +105,12 @@ if ( ! class_exists( 'WW_Booking_Admin' ) ) {
 			    $this->logger = new WW_Booking_Logger( $db, $table_prefix );
 			}
 
-            // Core WordPress Hooks
-            add_action( 'admin_menu', array( $this, 'add_plugin_menu' ) );
-            add_action( 'admin_init', array( $this, 'setup_admin_hooks' ) );
+			// Core WordPress Hooks
+			add_action( 'admin_menu', array( $this, 'add_plugin_menu' ) );
+			add_action( 'admin_init', array( $this, 'setup_admin_hooks' ) );
 
 			add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_scripts' ) );
-        }
+		}
 		private function load_active_modules() {
 		    $defaults = array(
 		        'customers'     => false,
@@ -180,51 +190,51 @@ if ( ! class_exists( 'WW_Booking_Admin' ) ) {
         // --- ADMIN MENU SETUP ---
 
         public function add_plugin_menu() {
-            add_menu_page(
-                'Bookings',
-                'My Bookings',
-                'manage_options',
-                'my-booking-main',
-                array( $this, 'render_dashboard_page' ),
-                'dashicons-calendar-alt',
-                6
-            );
-            add_submenu_page(
-	            'my-booking-main',          // Parent slug (main menu)
-	            'Bookings',                   // Page title
-	            'Bookings',                   // Menu title
-	            'manage_options',             // Capability
-	            'my-booking-bookings',        // Menu slug
-	            array( $this, 'render_bookings_list_page' ) // Callback function
-	        );
-			add_submenu_page(
-		        null,
-		        'New Booking',
-		        'New Booking',
-		        'manage_options',
-		        'my-booking-new-booking',
-		        array( $this, 'render_new_booking_page' )
-		    );
-			if ( ! empty( $this->active_modules['lakes'] ) ) {
-				add_submenu_page(
-	                'my-booking-main',
-	                'Lakes',
-	                'Lakes',
-	                'manage_options',
-	                'my-booking-lakes',
-	                array( $this, 'render_lakes_page' )
-	            );
-			};
-			if ( ! empty( $this->active_modules['clubs'] ) ) {
-	            add_submenu_page(
-	            	'my-booking-main',
-	            	'Clubs',
-	            	'Clubs',
-	            	'manage_options',
-	            	'my-booking-clubs',
-	            	array( $this, 'render_clubs_page' )
-				);
-			};
+					add_menu_page(
+						'Bookings',
+						'My Bookings',
+						'manage_options',
+						'my-booking-main',
+						array( $this, 'render_dashboard_page' ),
+						'dashicons-calendar-alt',
+						6
+					);
+					add_submenu_page(
+						'my-booking-main',          // Parent slug (main menu)
+						'Bookings',                   // Page title
+						'Bookings',                   // Menu title
+						'manage_options',             // Capability
+						'my-booking-bookings',        // Menu slug
+						array( $this, 'render_bookings_list_page' )
+					);
+					add_submenu_page(
+						null,
+						'New Booking',
+						'New Booking',
+						'manage_options',
+						'my-booking-new-booking',
+						array( $this, 'render_new_booking_page' )
+					);
+					if ( ! empty( $this->active_modules['lakes'] ) ) {
+						add_submenu_page(
+							'my-booking-main',
+							'Lakes',
+							'Lakes',
+							'manage_options',
+							'my-booking-lakes',
+							array( $this, 'render_lakes_page' )
+						);
+					};
+					if ( ! empty( $this->active_modules['clubs'] ) ) {
+						add_submenu_page(
+							'my-booking-main',
+							'Clubs',
+							'Clubs',
+							'manage_options',
+							'my-booking-clubs',
+							array( $this, 'render_clubs_page' )
+						);
+					};
 			if ( ! empty( $this->active_modules['customers'] ) ) {
 	            add_submenu_page(
 	            	'my-booking-main',

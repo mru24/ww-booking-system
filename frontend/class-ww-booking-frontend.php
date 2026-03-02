@@ -467,25 +467,121 @@ if ( ! class_exists( 'WW_Booking_Frontend' ) ) {
 		/**
 		 * REST API: Create new booking
 		 */
+		// public function create_booking($request) {
+		// 	$data = $request->get_params();
+
+		//     // Validate required fields
+		//     if (empty($data['lake_id']) || empty($data['date_start']) || 
+		// 				empty($data['date_end']) || empty($data['pegs'])) {
+		// 			return new WP_REST_Response(array('message' => 'Missing required fields'), 400);
+		//     }
+
+		//     $result = $this->bookings_functions->save_booking($data);
+
+		//     if ($result) {
+		//         return new WP_REST_Response(array(
+		//             'message' => 'Booking created successfully',
+		//             'booking_id' => $result
+		//         ), 201);
+		//     } else {
+		//         return new WP_REST_Response(array('message' => 'Booking creation failed'), 500);
+		//     }
+		// }
+
 		public function create_booking($request) {
-		    $data = $request->get_params();
+				$data = $request->get_params();
 
-		    // Validate required fields
-		    if (empty($data['lake_id']) || empty($data['date_start']) || empty($data['date_end']) || empty($data['pegs'])) {
-		        return new WP_REST_Response(array('message' => 'Missing required fields'), 400);
-		    }
+				// Validate required fields
+				if (empty($data['lake_id']) || empty($data['date_start']) || 
+						empty($data['date_end']) || empty($data['pegs'])) {
+						return new WP_REST_Response(array('message' => 'Missing required fields'), 400);
+				}
 
-		    $result = $this->bookings_functions->save_booking($data);
+				// Save booking first (as draft)
+				$booking_id = $this->bookings_functions->save_booking($data);
+				
+				if ($booking_id) {
+						// Check if WooCommerce is active and we should use it
+						if (class_exists('WooCommerce') && isset($data['use_woocommerce']) && $data['use_woocommerce']) {
+								
+								// Create WooCommerce order
+								$order = wc_create_order();
+								
+								// Add booking as product
+								$product_id = $this->get_or_create_booking_product($data['lake_id']);
+								$price = $this->calculate_booking_price($data);
+								
+								$order->add_product(wc_get_product($product_id), 1, array(
+										'subtotal' => $price,
+										'total' => $price,
+								));
+								
+								// Add booking metadata
+								$order->update_meta_data('_ww_booking_id', $booking_id);
+								$order->update_meta_data('_ww_booking_data', $data);
+								
+								// Set customer data if provided
+								if (!empty($data['customer_email'])) {
+										$order->set_billing_email($data['customer_email']);
+										$order->set_billing_first_name($data['customer_first_name'] ?? '');
+										$order->set_billing_last_name($data['customer_last_name'] ?? '');
+								}
+								
+								$order->calculate_totals();
+								$order->save();
+								
+								// Return checkout URL
+								return new WP_REST_Response(array(
+										'message' => 'Booking created, proceed to payment',
+										'booking_id' => $booking_id,
+										'checkout_url' => $order->get_checkout_payment_url()
+								), 201);
+						}
+						
+						// Return booking created without payment
+						return new WP_REST_Response(array(
+								'message' => 'Booking created successfully',
+								'booking_id' => $booking_id
+						), 201);
+				} else {
+						return new WP_REST_Response(array('message' => 'Booking creation failed'), 500);
+				}
+		}		
 
-		    if ($result) {
-		        return new WP_REST_Response(array(
-		            'message' => 'Booking created successfully',
-		            'booking_id' => $result
-		        ), 201);
-		    } else {
-		        return new WP_REST_Response(array('message' => 'Booking creation failed'), 500);
-		    }
+		/**
+		 * Helper methods for WooCommerce integration
+		 */
+		protected function get_or_create_booking_product($lake_id) {
+				// Check if product exists
+				$product_id = get_option('ww_booking_product_' . $lake_id);
+				
+				if ($product_id && wc_get_product($product_id)) {
+						return $product_id;
+				}
+				
+				// Create new product
+				$product = new WC_Product_Simple();
+				$product->set_name('Lake Booking #' . $lake_id);
+				$product->set_status('publish');
+				$product->set_catalog_visibility('hidden');
+				$product->set_virtual(true);
+				
+				$product_id = $product->save();
+				update_option('ww_booking_product_' . $lake_id, $product_id);
+				
+				return $product_id;
 		}
+
+		protected function calculate_booking_price($data) {
+				// Implement your pricing logic here
+				$days = (strtotime($data['date_end']) - strtotime($data['date_start'])) / DAY_IN_SECONDS + 1;
+				$pegs_count = count($data['pegs']);
+				
+				// Default price: £10 per peg per day
+				$price_per_peg_per_day = 10;
+				
+				return $pegs_count * $days * $price_per_peg_per_day;
+		}		
 
 		/**
 		 * REST API: Get lakes list

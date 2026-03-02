@@ -74,6 +74,8 @@ if ( ! class_exists( 'WW_Booking_Plugin' ) ) {
 				    booking_status enum('draft','booked','confirmed','cancelled') NOT NULL DEFAULT 'draft',
 				    created_at datetime NOT NULL,
 				    updated_at timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+						order_id bigint(20) DEFAULT NULL,
+						order_created datetime NULL,
 				    PRIMARY KEY (id),
 				    KEY lake_id (lake_id),
 				    KEY date_range (date_start, date_end)
