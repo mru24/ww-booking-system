@@ -293,7 +293,7 @@ $get_sortable_header = function( $column_key, $display_name ) use ( $sort_by, $s
                         <td>
                             <?php if ( ! empty( $booking['pegs'] ) ) : ?>
                             	<?php echo count($booking['pegs']); ?> peg(s) booked
-                                <?php if ( count($booking['pegs']) <= 3 ) : ?>
+                                <?php if ( count($booking['pegs']) <= 1 ) : ?>
                                     <ul style="list-style: none; margin: 5px 0 0 0; padding: 0; font-size: 0.9em; color: #666;">
                                     <?php foreach ( $booking['pegs'] as $peg ) : ?>
                                         <li style="margin-bottom: 3px;">
@@ -307,10 +307,13 @@ $get_sortable_header = function( $column_key, $display_name ) use ( $sort_by, $s
                                     </ul>
                                 <?php else : ?>
                                     <div style="margin-top: 5px;">
-                                        <button type="button" class="button button-small view-pegs-details"
-                                                data-booking-id="<?php echo $booking_id; ?>">
-                                            View <?php echo count($booking['pegs']); ?> pegs
-                                        </button>
+                                        <button type="button"
+                                            class="button button-small view-pegs-details"
+        data-booking-id="<?php echo $booking_id; ?>"
+        data-pegs='<?php echo esc_attr( wp_json_encode( $booking['pegs'] ) ); ?>'>
+    View <?php echo count($booking['pegs']); ?> pegs
+</button>
+
                                     </div>
                                 <?php endif; ?>
                             <?php else : ?>
@@ -410,8 +413,6 @@ $get_sortable_header = function( $column_key, $display_name ) use ( $sort_by, $s
 <script>
 jQuery(document).ready(function($) {
     const restRoot = '<?php echo esc_url_raw( get_rest_url( null, 'my-booking-plugin/v1/book/' ) ); ?>';
-
-    // Delete booking functionality
     $('.delete-booking').on('click', function() {
         const $button = $(this);
         const bookingId = $button.data('booking-id');
@@ -446,16 +447,30 @@ jQuery(document).ready(function($) {
     });
 
     // View peg details functionality
+
     $('.view-pegs-details').on('click', function() {
         const bookingId = $(this).data('booking-id');
-        const $row = $('#booking-row-' + bookingId);
+        const pegs = $(this).data('pegs');
 
-        // For now, we'll show a simple message. In a real implementation,
-        // you might want to fetch detailed peg info via AJAX
         $('#modal-booking-id').text(bookingId);
-        $('#pegs-list').html('<p>Showing detailed peg information for booking #' + bookingId + '. This would typically fetch detailed information via AJAX.</p>');
+
+        let html = '<ul style="list-style:none; padding:0;">';
+
+        pegs.forEach(function(peg) {
+            html += `
+                <li style="margin-bottom:8px; padding-bottom:8px; border-bottom:2px solid #ddd;">
+                    <strong>${peg.peg_name}</strong><br>
+                    Club: ${peg.club_name}<br>
+                    Match type: ${peg.match_type_slug.replace('_',' ')}
+                </li>
+            `;
+        });
+
+        html += '</ul>';
+
+        $('#pegs-list').html(html);
         $('#pegs-modal').show();
-    });
+    });    
 });
 
 // Function to update the bookings per page
@@ -486,4 +501,3 @@ document.addEventListener('click', function(event) {
     }
 });
 </script>
-[file content end]
