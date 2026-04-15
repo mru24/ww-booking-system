@@ -190,29 +190,30 @@ jQuery(document).ready(function($) {
             <table class="wp-list-table widefat fixed striped booking-pegs-data">
                 <thead>
                     <tr>
-                        <th style="width: 15%;">Peg Name</th>
-                        <th style="width: 10%;vertical-align:middle;">
+                        <th style="width: 10%;">Peg Name</th>
+                        <th style="width: 10%;">Status</th>
+                        <th style="width: 30%;vertical-align:middle;">
                             <label>
                                 <input type="checkbox" id="select-all-pegs"> Select all
                             </label>
-                        </th>
-                        <th style="width: 15%;">Status</th>
-                        <th style="width: 30%;">Match Type</th>
-                        <th style="width: 30%;">Club</th>
+                        </th>                        
+                        <th style="width: 25%;">Match Type</th>
+                        <th style="width: 25%;">Club</th>
                     </tr>
                     <tr class="bulk-actions-row">
-                        <th style="width: 15%;"></th>
-                        <th colspan="2" style="width:25%">
+                        <th style="width: 10%;"></th>
+                        <th style="width: 10%;"></th>
+                        <th style="width:30%">
                             <input type="text" id="peg-numbers-input" placeholder="Eg: 1,2,4-6,8" style="width: 150px;">
                             <button type="button" id="apply-peg-numbers" class="button button-small">Apply</button>
                             <button type="button" id="clear-selection" class="button button-small">&times;</button>
                             <!--<p class="description" style="margin-top: 5px;">Enter row numbers (1 = first peg, 2 = second peg, etc.)</p>-->
                         </th>
-                        <th style="width:30%">
+                        <th style="width:25%">
                             ${matchTypeSelect}
                             <button id="applyMatchType" class="button button-small">Apply</button>
                         </th>
-                        <th style="width:30%">
+                        <th style="width:25%">
                             ${clubSelect}
                             <button id="applyClub" class="button button-small">Apply</button>
                         </th>
@@ -258,12 +259,12 @@ jQuery(document).ready(function($) {
 
             tableHtml += `
                 <tr ${rowClass} data-peg-id="${peg.peg_id}" data-row-number="${rowNumber}">
-                    <td style="width:15%"><span class="peg-name-display" data-row-number="${rowNumber}">
+                    <td style="width:10%"><span class="peg-name-display" data-row-number="${rowNumber}">
                     ${rowNumber} - ${peg.peg_name}</span></td>
-                    <td style="width:10%">${statusInput} ${bookToggle}</td>
-                    <td style="width:15%"><span class="${statusColor}">${statusText}</span></td>
-                    <td style="width:30%">${matchTypeSelectRow}</td>
-                    <td style="width:30%">${clubSelectRow}</td>
+                    <td style="width:10%"><span class="${statusColor}">${statusText}</span></td>
+                    <td style="width:30%">${statusInput} ${bookToggle}</td>                    
+                    <td style="width:25%">${matchTypeSelectRow}</td>
+                    <td style="width:25%">${clubSelectRow}</td>
                 </tr>
             `;
         });
@@ -465,7 +466,6 @@ jQuery(document).ready(function($) {
                 #peg-numbers-input { margin-right: 5px; }
                 .button-small { margin: 0 2px; }
                 .peg-name-display { font-weight: normal; }
-                button { background:red; }
             </style>
         `);
     }
