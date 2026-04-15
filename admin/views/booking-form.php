@@ -38,7 +38,9 @@ $default_end_date = date( 'Y-m-d', strtotime( '+1 day', strtotime( $default_star
 
         <?php wp_nonce_field( 'mybp_booking_nonce' ); ?>
         <input type="hidden" name="action" value="mybp_add_booking">
-        <input type="hidden" name="booking_status" value="booked"> <h2>Booking Parameters</h2>
+        <input type="hidden" name="booking_status" value="booked"> 
+        
+        <h2>Booking Parameters</h2>
         <table class="form-table" role="presentation">
             <tr>
                 <th scope="row"><label for="lake_id">Lake *</label></th>
@@ -168,7 +170,7 @@ jQuery(document).ready(function($) {
      * Renders the peg availability table from the fetched data.
      */
     function renderPegsTable(pegs) {
-    	// Generate Match Type Dropdown
+        // Generate Match Type Dropdown
         var matchTypeSelect = '<select class="match-type-selector header-select">';
         matchTypeSelect += '<option value="">Select Type</option>';
         <?php foreach ( $match_types as $type ) : ?>
@@ -180,125 +182,278 @@ jQuery(document).ready(function($) {
         var clubSelect = '<select class="club-selector header-select">';
         clubSelect += '<option value="">Select Club</option>';
         <?php foreach ( $clubs as $club ) : ?>
-            // Assuming $clubs has 'id' and 'club_name'
             clubSelect += '<option value="<?php echo absint( $club['id'] ); ?>"><?php echo esc_html( $club['club_name'] ); ?></option>';
         <?php endforeach; ?>
         clubSelect += '</select>';
+        
         var tableHtml = `
-            <table class="wp-list-table widefat fixed striped">
+            <table class="wp-list-table widefat fixed striped booking-pegs-data">
                 <thead>
                     <tr>
                         <th style="width: 15%;">Peg Name</th>
-                        <th style="width: 10%;">Book</th>
+                        <th style="width: 10%;vertical-align:middle;">
+                            <label>
+                                <input type="checkbox" id="select-all-pegs"> Select all
+                            </label>
+                        </th>
                         <th style="width: 15%;">Status</th>
                         <th style="width: 30%;">Match Type</th>
                         <th style="width: 30%;">Club</th>
                     </tr>
-                </thead>
-                <tbody>
-                	<tr>
+                    <tr class="bulk-actions-row">
                         <th style="width: 15%;"></th>
-                        <th style="width: 10%;"></th>
-                        <th style="width: 15%;"></th>
-                        <th style="width: 30%;">
-                    		${matchTypeSelect}
-                            <button id="applyMatchType">Apply</button>
+                        <th colspan="2" style="width:25%">
+                            <input type="text" id="peg-numbers-input" placeholder="Eg: 1,2,4-6,8" style="width: 150px;">
+                            <button type="button" id="apply-peg-numbers" class="button button-small">Apply</button>
+                            <button type="button" id="clear-selection" class="button button-small">&times;</button>
+                            <!--<p class="description" style="margin-top: 5px;">Enter row numbers (1 = first peg, 2 = second peg, etc.)</p>-->
                         </th>
-                        <th style="width: 30%;">
-                        	${clubSelect}
-                            <button id="applyClub">Apply</button>
+                        <th style="width:30%">
+                            ${matchTypeSelect}
+                            <button id="applyMatchType" class="button button-small">Apply</button>
+                        </th>
+                        <th style="width:30%">
+                            ${clubSelect}
+                            <button id="applyClub" class="button button-small">Apply</button>
                         </th>
                     </tr>
-                    <script>
-                    document.getElementById('applyMatchType').addEventListener('click', function(e) {
-                    	e.preventDefault();
-					    const headerSelect = document.querySelector('.match-type-selector.header-select');
-					    const valueToApply = headerSelect.value;
-					    if (!valueToApply) return;										    document.querySelectorAll('.match-type-selector:not(.header-select)').forEach(select => {
-					        select.value = valueToApply;
-					    });
-					});
-					document.getElementById('applyClub').addEventListener('click', function(e) {
-						e.preventDefault();
-					    const headerSelect = document.querySelector('.club-selector.header-select');
-					    const valueToApply = headerSelect.value;
-					    if (!valueToApply) return;										    document.querySelectorAll('.club-selector:not(.header-select)').forEach(select => {
-					        select.value = valueToApply;
-					    });
-					});
-					<\/script>
-                    `;
+                    
+                </thead>
+                <tbody>`;
 
-        pegs.forEach(function(peg) {
+        pegs.forEach(function(peg, index) {
+            var rowNumber = index + 1; // 1-based row number
             var isBooked = peg.is_booked === 'booked';
+            var isChecked = !isBooked;
             var rowClass = isBooked ? 'style="background-color: #fce7e7;"' : 'style="background-color: #e6ffe6;"';
             var statusText = isBooked ? 'BOOKED' : 'Available';
             var statusColor = isBooked ? 'tag-red' : 'tag-green';
+            var disabledAttr = isBooked ? 'disabled' : '';
+            var checkboxDisabled = isBooked ? 'disabled' : '';
 
             // Generate Match Type Dropdown
-            var matchTypeSelect = '<select name="pegs[' + peg.peg_id + '][match_type_slug]" class="match-type-selector" ' + (isBooked ? 'disabled' : 'required') + '>';
-            matchTypeSelect += '<option value="">Select Type</option>';
+            var matchTypeSelectRow = '<select name="pegs[' + peg.peg_id + '][match_type_slug]" class="match-type-selector" ' + disabledAttr + ' ' + (isChecked ? 'required' : '') + '>';
+            matchTypeSelectRow += '<option value="">Select Type</option>';
             <?php foreach ( $match_types as $type ) : ?>
-                matchTypeSelect += '<option value="<?php echo esc_attr( $type['type_slug'] ); ?>"><?php echo esc_html( $type['type_name'] ); ?></option>';
+                matchTypeSelectRow += '<option value="<?php echo esc_attr( $type['type_slug'] ); ?>"><?php echo esc_html( $type['type_name'] ); ?></option>';
             <?php endforeach; ?>
-            matchTypeSelect += '</select>';
+            matchTypeSelectRow += '</select>';
 
             // Generate Club Dropdown
-            var clubSelect = '<select name="pegs[' + peg.peg_id + '][club_id]" class="club-selector" ' + (isBooked ? 'disabled' : 'required') + '>';
-            clubSelect += '<option value="">Select Club</option>';
+            var clubSelectRow = '<select name="pegs[' + peg.peg_id + '][club_id]" class="club-selector" ' + disabledAttr + ' ' + (isChecked ? 'required' : '') + '>';
+            clubSelectRow += '<option value="">Select Club</option>';
             <?php foreach ( $clubs as $club ) : ?>
-                // Assuming $clubs has 'id' and 'club_name'
-                clubSelect += '<option value="<?php echo absint( $club['id'] ); ?>"><?php echo esc_html( $club['club_name'] ); ?></option>';
+                clubSelectRow += '<option value="<?php echo absint( $club['id'] ); ?>"><?php echo esc_html( $club['club_name'] ); ?></option>';
             <?php endforeach; ?>
-            clubSelect += '</select>';
+            clubSelectRow += '</select>';
 
-            // Generate Status Toggle (Hidden input determines if it's saved as booked)
-            var statusInput = '<input type="hidden" name="pegs[' + peg.peg_id + '][status]" value="' + (isBooked ? 'booked' : 'available') + '" class="status-input">';
+            // Hidden status input
+            var statusInput = '<input type="hidden" name="pegs[' + peg.peg_id + '][status]" value="' + (isChecked ? 'booked' : 'available') + '" class="status-input">';
 
-            // The actual visible checkbox/toggle
+            // Book toggle checkbox
             var bookToggle = '<label>' +
-                                '<input type="checkbox" class="peg-book-toggle" data-peg-id="' + peg.peg_id + '" ' + (isBooked ? 'checked disabled' : 'checked') + '>' +
+                                '<input type="checkbox" class="peg-book-toggle" data-peg-id="' + peg.peg_id + '" data-row-number="' + rowNumber + '" ' + (isChecked ? 'checked' : '') + ' ' + checkboxDisabled + '>' +
                                 ' Book' +
                             '</label>';
 
             tableHtml += `
-                <tr ${rowClass} data-peg-id="${peg.peg_id}">
-
-                    <td>${peg.peg_name}</td>
-                    <td>${statusInput} ${bookToggle}</td>
-                    <td><span class="${statusColor}">${statusText}</span></td>
-                    <td>${matchTypeSelect}</td>
-                    <td>${clubSelect}</td>
-
+                <tr ${rowClass} data-peg-id="${peg.peg_id}" data-row-number="${rowNumber}">
+                    <td style="width:15%"><span class="peg-name-display" data-row-number="${rowNumber}">
+                    ${rowNumber} - ${peg.peg_name}</span></td>
+                    <td style="width:10%">${statusInput} ${bookToggle}</td>
+                    <td style="width:15%"><span class="${statusColor}">${statusText}</span></td>
+                    <td style="width:30%">${matchTypeSelectRow}</td>
+                    <td style="width:30%">${clubSelectRow}</td>
                 </tr>
             `;
         });
 
-        tableHtml += '</tbody></table>';
+        tableHtml += '</tbody></div></div></table>';
         $('#pegs-container').html(tableHtml);
 
-        // Add event listener for the toggle (Note: The system is designed to only allow booking, not unbooking in this form)
+        // --- Event Handlers for new features ---
+
+        // 1. Select/Deselect All Checkbox
+        $('#select-all-pegs').on('change', function() {
+            var isChecked = $(this).is(':checked');
+            $('.peg-book-toggle:not(:disabled)').prop('checked', isChecked).trigger('change');
+        });
+
+        // 2. Clear all selections
+        $('#clear-selection').on('click', function() {
+            $('.peg-book-toggle:not(:disabled)').prop('checked', false).trigger('change');
+            $('#select-all-pegs').prop('checked', false);
+            $('#peg-numbers-input').val('');
+        });
+
+        // 3. Apply selection by row numbers (supports comma-separated and ranges like 1-5)
+        $('#apply-peg-numbers').on('click', function() {
+            var inputVal = $('#peg-numbers-input').val().trim();
+            if (!inputVal) {
+                alert('Please enter row numbers (e.g., 1,2,4-6,8)');
+                return;
+            }
+            
+            var selectedRowNumbers = parseRowNumbers(inputVal);
+            if (selectedRowNumbers.length === 0) {
+                alert('No valid row numbers found. Please use format like: 1,2,4-6,8');
+                return;
+            }
+            
+            console.log('Selected row numbers to check:', selectedRowNumbers);
+            
+            // For each checkbox, check if its row number is in the selected list
+            var foundCount = 0;
+            $('.peg-book-toggle:not(:disabled)').each(function() {
+                var $checkbox = $(this);
+                var rowNumber = parseInt($checkbox.data('row-number'), 10);
+                
+                console.log('Checking row:', rowNumber, 'against selected:', selectedRowNumbers);
+                
+                var shouldSelect = selectedRowNumbers.includes(rowNumber);
+                
+                if (shouldSelect) {
+                    foundCount++;
+                    if (!$checkbox.is(':checked')) {
+                        $checkbox.prop('checked', true).trigger('change');
+                    }
+                }
+            });
+            
+            if (foundCount === 0) {
+                alert('No matching pegs found. Make sure the row numbers you entered exist (1 to ' + $('.peg-book-toggle:not(:disabled)').length + ')');
+            } else {
+                console.log('Found and selected', foundCount, 'pegs');
+                // Show success message
+                var $tempMsg = $('<div class="notice notice-success" style="margin: 10px 0; padding: 5px;"><p>Selected ' + foundCount + ' peg(s) by row number(s)!</p></div>');
+                $('#pegs-container').before($tempMsg);
+                setTimeout(function() { $tempMsg.fadeOut(function() { $(this).remove(); }); }, 2000);
+            }
+            
+            // Update select all checkbox state
+            var totalCheckboxes = $('.peg-book-toggle:not(:disabled)').length;
+            var checkedCheckboxes = $('.peg-book-toggle:not(:disabled):checked').length;
+            $('#select-all-pegs').prop('checked', totalCheckboxes > 0 && checkedCheckboxes === totalCheckboxes);
+        });
+        
+        // Helper function to parse row numbers like "1,2,4-6,8"
+        function parseRowNumbers(input) {
+            // Remove all spaces
+            input = input.replace(/\s/g, '');
+            
+            var parts = input.split(',');
+            var numbers = [];
+            
+            for (var i = 0; i < parts.length; i++) {
+                var part = parts[i];
+                if (part === '') continue;
+                
+                if (part.includes('-')) {
+                    var range = part.split('-');
+                    var start = parseInt(range[0], 10);
+                    var end = parseInt(range[1], 10);
+                    
+                    if (!isNaN(start) && !isNaN(end) && start <= end) {
+                        for (var j = start; j <= end; j++) {
+                            numbers.push(j);
+                        }
+                    }
+                } else {
+                    var num = parseInt(part, 10);
+                    if (!isNaN(num)) {
+                        numbers.push(num);
+                    }
+                }
+            }
+            
+            return numbers;
+        }
+
+        // 4. Apply Match Type to Selected Pegs
+        $('#applyMatchType').on('click', function(e) {
+            e.preventDefault();
+            var headerSelect = $('.match-type-selector.header-select');
+            var valueToApply = headerSelect.val();
+            if (!valueToApply) {
+                alert('Please select a match type first');
+                return;
+            }
+            
+            var appliedCount = 0;
+            $('.peg-book-toggle:checked').each(function() {
+                var $row = $(this).closest('tr');
+                $row.find('.match-type-selector').val(valueToApply);
+                appliedCount++;
+            });
+            
+            if (appliedCount > 0) {
+                var $tempMsg = $('<div class="notice notice-success" style="margin: 10px 0; padding: 5px;"><p>Applied match type to ' + appliedCount + ' selected peg(s)!</p></div>');
+                $('#pegs-container').before($tempMsg);
+                setTimeout(function() { $tempMsg.fadeOut(function() { $(this).remove(); }); }, 2000);
+            }
+        });
+        
+        // 5. Apply Club to Selected Pegs
+        $('#applyClub').on('click', function(e) {
+            e.preventDefault();
+            var headerSelect = $('.club-selector.header-select');
+            var valueToApply = headerSelect.val();
+            if (!valueToApply) {
+                alert('Please select a club first');
+                return;
+            }
+            
+            var appliedCount = 0;
+            $('.peg-book-toggle:checked').each(function() {
+                var $row = $(this).closest('tr');
+                $row.find('.club-selector').val(valueToApply);
+                appliedCount++;
+            });
+            
+            if (appliedCount > 0) {
+                var $tempMsg = $('<div class="notice notice-success" style="margin: 10px 0; padding: 5px;"><p>Applied club to ' + appliedCount + ' selected peg(s)!</p></div>');
+                $('#pegs-container').before($tempMsg);
+                setTimeout(function() { $tempMsg.fadeOut(function() { $(this).remove(); }); }, 2000);
+            }
+        });
+
+        // Toggle event handler
         $('#pegs-container').on('change', '.peg-book-toggle', function() {
             var $row = $(this).closest('tr');
             var isChecked = $(this).is(':checked');
-
-            // Toggle the required attribute and disable status for the selects
-            $row.find('.match-type-selector, .club-selector').prop('disabled', !isChecked).prop('required', isChecked);
-
+            var isDisabled = $(this).is(':disabled');
+            
+            if (isDisabled) return;
+            
+            // Toggle the required attribute and enable/disable selects
+            $row.find('.match-type-selector, .club-selector')
+                .prop('disabled', !isChecked)
+                .prop('required', isChecked);
+            
             // Update the hidden status field
             $row.find('.status-input').val(isChecked ? 'booked' : 'available');
-
-            // Optionally, clear values if unbooked (though usually you don't unbook on the new booking form)
+            
+            // If unchecking, clear the selects
             if (!isChecked) {
                 $row.find('.match-type-selector').val('');
                 $row.find('.club-selector').val('');
             }
+            
+            // Update "Select All" checkbox state
+            var totalCheckboxes = $('.peg-book-toggle:not(:disabled)').length;
+            var checkedCheckboxes = $('.peg-book-toggle:not(:disabled):checked').length;
+            $('#select-all-pegs').prop('checked', totalCheckboxes > 0 && checkedCheckboxes === totalCheckboxes);
+        });
+        
+        // Trigger initial "Select All" state
+        $('#select-all-pegs').trigger('change');
+        
+        // Log total available pegs for debugging
+        console.log('Total available pegs:', $('.peg-book-toggle:not(:disabled)').length);
+        $('.peg-book-toggle:not(:disabled)').each(function() {
+            console.log('Row', $(this).data('row-number'), '- Peg ID:', $(this).data('peg-id'));
         });
     }
-
-    // Since 'peg options apply button' per peg is complex and usually requires server-side processing,
-    // we'll implement a simplified approach where all selections are submitted at once with the main "Create Booking" button.
-    // If you need per-peg saving, that would require a separate AJAX endpoint and button for each row.
 
     // CSS to make the status tags look good
     if ($('style:contains(".tag-green")').length === 0) {
@@ -306,6 +461,11 @@ jQuery(document).ready(function($) {
             <style>
                 .tag-green { background-color: #d4edda; color: #155724; padding: 4px 8px; border-radius: 4px; font-size: 0.9em; font-weight: bold; }
                 .tag-red { background-color: #fce7e7; color: #721c24; padding: 4px 8px; border-radius: 4px; font-size: 0.9em; font-weight: bold; }
+                .bulk-actions-row th { padding: 8px; vertical-align: middle; background-color: #f9f9f9; }
+                #peg-numbers-input { margin-right: 5px; }
+                .button-small { margin: 0 2px; }
+                .peg-name-display { font-weight: normal; }
+                button { background:red; }
             </style>
         `);
     }
